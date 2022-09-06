@@ -1,5 +1,5 @@
 # mobile-analytics
-A compilation of modules for calculating key app usage metrics using nothing but python.
+A compilation of modules for calculating key app usage metrics using nothing but python.  See https://medium.com/multiplyai/user-retention-with-cohort-analysis-afdbfbed23e9
  
 ## stats
 Module containing all the functions needed to calculate the different metrics.
