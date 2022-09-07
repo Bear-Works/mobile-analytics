@@ -1,8 +1,7 @@
 from pandas import DataFrame
 import numpy as np
 
-
-def user_acquisition_dict(events, acquisition_event_name):
+def user_acquisition_dict(events, acquisition_event_name,acquisition_event_key,event_time_key, distinct_id_key='distinct_id'):
     """
     Function used to generate a dict with "distinct_id": "acquisition_time" key:value pairs.
 
@@ -21,21 +20,21 @@ def user_acquisition_dict(events, acquisition_event_name):
     if not isinstance(acquisition_event_name, str):
         raise TypeError('"acquisition_event_name" should be a string')
 
-    if acquisition_event_name not in events['name'].unique():
+    if acquisition_event_name not in events[acquisition_event_key].unique():
         raise ValueError('"acquisition_event_name" should be a valid event present in the events dataframe')
 
     # get the acquisition time for eah distinct_id
-    acquisition = events[events['name'] == acquisition_event_name] \
-        .sort_values('time') \
-        .drop_duplicates(subset='distinct_id', keep='first')[['distinct_id', 'time']]
+    acquisition = events[events[acquisition_event_key] == acquisition_event_name] \
+        .sort_values(event_time_key) \
+        .drop_duplicates(subset=distinct_id_key, keep='first')[[distinct_id_key, event_time_key]]
 
     # convert df to a dict
-    acquisition = dict(zip(acquisition['distinct_id'], acquisition['time']))
+    acquisition = dict(zip(acquisition[distinct_id_key], acquisition[event_time_key]))
 
     return acquisition
 
 
-def acquisition_events_cohort(events, acquisition_event_name, period='w', month_fmt='period'):
+def acquisition_events_cohort(events, acquisition_event_name, acquisition_event_key='name', distinct_id_key='distinct_id', event_time_key='time', period='w', month_fmt='period'):
     """
     Function used to add "cohort", "event_period", "user_active" and "user_returns" columns.
     "cohort" is the weekly/monthly period that the user generated a successful plan (user acquired).
@@ -66,25 +65,25 @@ def acquisition_events_cohort(events, acquisition_event_name, period='w', month_
         assert month_fmt in ['period', 'datetime'], '"month_fmt" should be either "period" or "datetime"'
 
     # create user acquisition dict and get all unique acquired users
-    acquisition_dict = user_acquisition_dict(events, acquisition_event_name)
+    acquisition_dict = user_acquisition_dict(events, acquisition_event_name, acquisition_event_key, event_time_key, distinct_id_key)
     acquired_users = acquisition_dict.keys()
 
     # filter events dataframe for only acquired users (filter out leads)
-    events = events[events['distinct_id'].isin(acquired_users)].copy()
+    events = events[events[distinct_id_key].isin(acquired_users)].copy()
 
     # get acquisition time for each user and create a "cohort" column
-    events['acquisition_time'] = events['distinct_id'].map(acquisition_dict)
+    events['acquisition_time'] = events[distinct_id_key].map(acquisition_dict)
 
     # create the "cohort" and "event_period" columns, based on the period defined
     if period == 'd':
         events['cohort'] = events['acquisition_time'].dt.date
-        events['event_period'] = events['time'].dt.date
+        events['event_period'] = events[event_time_key].dt.date
 
     elif period == 'w':
         events['cohort'] = (events['acquisition_time'] - events['acquisition_time'] \
                             .dt.weekday.astype('timedelta64[D]')).astype('datetime64[D]')
 
-        events['event_period'] = (events['time'] - events['time'] \
+        events['event_period'] = (events[event_time_key] - events[event_time_key] \
                                   .dt.weekday.astype('timedelta64[D]')).astype('datetime64[D]')
 
     else:
@@ -99,12 +98,12 @@ def acquisition_events_cohort(events, acquisition_event_name, period='w', month_
 
         elif month_fmt == 'datetime':
             events['cohort'] = events['acquisition_time'].dt.date.astype('datetime64[M]')
-            events['event_period'] = events['time'].dt.date.astype('datetime64[M]')
+            events['event_period'] = events[event_time_key].dt.date.astype('datetime64[M]')
 
     # indicate if the user did any action at or after his/her acquisition time
     # if you do not want to count same-day activity replace following line with:
     # events['user_active'] = (events['time'].dt.date > events['acquisition_time'].dt.date)
-    events['user_active'] = (events['time'] >= events['acquisition_time'])
+    events['user_active'] = (events[event_time_key] >= events['acquisition_time'])
 
     # indicate if the user returned in any period subsequent to his/her acquisition cohort
     events['user_returns'] = (events['event_period'] > events['cohort'])
