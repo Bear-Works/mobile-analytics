@@ -1,7 +1,7 @@
 from pandas import DataFrame
 import numpy as np
 
-def user_acquisition_dict(events, acquisition_event_name,acquisition_event_key,event_time_key, distinct_id_key='distinct_id'):
+def user_acquisition_dict(events, acquisition_event_name,acquisition_event_key, event_time_key, distinct_id_key='distinct_id'):
     """
     Function used to generate a dict with "distinct_id": "acquisition_time" key:value pairs.
 
@@ -110,8 +110,8 @@ def acquisition_events_cohort(events, acquisition_event_name, acquisition_event_
 
     return events
 
-
-def users_per_period(events, acquisition_event_name, user_source_col, period='w', month_fmt='period'):
+# acquisition_event_key='event_type',event_time_key='close_date',distinct_id_key='name'
+def users_per_period(events, acquisition_event_name, acquisition_event_key, user_source_col, event_time_key='time', distinct_id_key='distinct_id', period='w', month_fmt='period'):
     """
     Function used to group new users into period cohorts.
     The first time a user generates a plan is treated as the acquisition time.
@@ -137,7 +137,7 @@ def users_per_period(events, acquisition_event_name, user_source_col, period='w'
         assert hasattr(events, user_source_col), '"user_source_col" should be a column in the events dataframe'
 
     # calculate the cohort for each user and period for each event
-    events = acquisition_events_cohort(events, acquisition_event_name, period=period, month_fmt=month_fmt)
+    events = acquisition_events_cohort(events, acquisition_event_name, acquisition_event_key=acquisition_event_key, distinct_id_key=distinct_id_key, event_time_key=event_time_key, period=period, month_fmt=month_fmt)
 
     # will be used to rename the period column of each groupby result
     period_name = {'w': 'Week Starting',
